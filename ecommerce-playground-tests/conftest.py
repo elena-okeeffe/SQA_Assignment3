@@ -3,11 +3,8 @@ import pytest
 import sys
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service as ChromeService
-from selenium.webdriver.firefox.service import Service as FirefoxService
 from webdriver_manager.chrome import ChromeDriverManager
-from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
 
 BASE_URL = os.environ.get("EP_BASE_URL", "https://ecommerce-playground.lambdatest.io/index.php?route=common/home")
 DEFAULT_BROWSER = os.environ.get("EP_BROWSER", "chrome").lower()
@@ -23,19 +20,12 @@ def _chrome_driver():
     service = ChromeService(ChromeDriverManager().install())
     return webdriver.Chrome(service=service, options=opts)
 
-def _firefox_driver():
-    opts = FirefoxOptions()
-    if HEADLESS:
-        opts.add_argument("--headless")
-    opts.set_preference("dom.webnotifications.enabled", False)
-    service = FirefoxService(GeckoDriverManager().install())
-    return webdriver.Firefox(service=service, options=opts)
 
 @pytest.fixture(scope="session")
 def base_url():
     return BASE_URL
 
-@pytest.fixture(params=["chrome", "firefox"], scope="session")
+@pytest.fixture(params=["chrome"], scope="session")
 def browser_name(request):
     bn = os.environ.get("EP_BROWSER")
     if bn:
@@ -46,8 +36,6 @@ def browser_name(request):
 def driver(request, browser_name):
     if browser_name == "chrome":
         driver = _chrome_driver()
-    elif browser_name == "firefox":
-        driver = _firefox_driver()
     else:
         raise ValueError(f"Unsupported browser: {browser_name}")
     driver.implicitly_wait(5)
