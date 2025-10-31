@@ -1,0 +1,2 @@
+# pages/__init__.py
+# make pages a package for imports
