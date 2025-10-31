@@ -19,7 +19,7 @@ pytest
 
 - Run a single test file:
 ```
-pytest tests/test_search.py -q -s
+ python -m pytest ecommerce-playground-tests/tests/test_homepage.py -q -s
 ```
 
 Environment variables
