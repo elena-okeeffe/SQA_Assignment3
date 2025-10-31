@@ -6,10 +6,13 @@ Prereqs
 - Python 3.8+
 - pip
 
-Install
-```
+option from powershell:
+python -m venv .venv
+. .venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
-```
+pip install selenium pytest
+
 
 Run
 - Run all tests (headless by default):
