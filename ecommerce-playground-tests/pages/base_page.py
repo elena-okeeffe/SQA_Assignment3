@@ -1,5 +1,7 @@
 # pages/base_page.py
 import time
+import os
+from datetime import datetime
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
@@ -34,6 +36,27 @@ class BasePage:
 
     def title(self):
         return self.driver.title
+    
+    def take_screenshot(self, name: str = None):
+        """
+        Take a screenshot and save it to a screenshots directory.
+        If name is provided, use it; otherwise generate a timestamp-based name.
+        Returns the full path to the saved screenshot.
+        """
+        # Create screenshots directory if it doesn't exist
+        screenshots_dir = os.path.join(os.getcwd(), "screenshots")
+        os.makedirs(screenshots_dir, exist_ok=True)
+        
+        # Generate filename
+        if name:
+            filename = f"{name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        else:
+            filename = f"screenshot_{datetime.now().strftime('%Y%m%d_%H%M%S')}.png"
+        
+        filepath = os.path.join(screenshots_dir, filename)
+        self.driver.save_screenshot(filepath)
+        print(f"SCREENSHOT SAVED: {filepath}")
+        return filepath
     
     def wait_for_page_ready(self, timeout: int = None):
         to = timeout or self.DEFAULT_TIMEOUT
