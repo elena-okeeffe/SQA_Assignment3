@@ -4,6 +4,7 @@ from pages.register_page import RegisterPage
 
 @pytest.mark.usefixtures("driver")
 class TestRegisterExistingEmail:
+    #This test is for Function F14 Unique User Emails
     def test_register_with_existing_email_shows_warning(self, driver):
         page = RegisterPage(driver, base_url="https://ecommerce-playground.lambdatest.io/")
         page.open_from_home()
