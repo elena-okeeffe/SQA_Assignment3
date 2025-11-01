@@ -6,11 +6,16 @@ Prereqs
 - Python 3.8+
 - pip
 
-option from powershell:
+From Powershell: 
+
 python -m venv .venv
+
 . .venv\Scripts\Activate.ps1
+
 python -m pip install --upgrade pip setuptools wheel
+
 pip install -r requirements.txt
+
 pip install selenium pytest
 
 
@@ -24,8 +29,3 @@ pytest
 ```
  python -m pytest ecommerce-playground-tests/tests/test_homepage.py -q -s
 ```
-
-Environment variables
-- EP_BASE_URL : override the base URL (default: the LambdaTest playground site)
-- EP_BROWSER : choose browser: `chrome` or `firefox` (default runs both via param fixture)
-- EP_HEADLESS : `0` to disable headless mode, any other value or unset to enable headless
