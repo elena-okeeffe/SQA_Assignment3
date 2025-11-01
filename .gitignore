@@ -1,3 +1,11 @@
 # Ignore screenshots directory
 screenshots/
 ecommerce-playground-tests/screenshots/
+
+# Ignore python cache files
+__pycache__/
+ecommerce-playground-tests/__pycache__/
+ecommerce-playground-tests/pages/__pycache__/
+ecommerce-playground-tests/tests/__pycache__/
+.pytest_cache/
+.pytest_cache
