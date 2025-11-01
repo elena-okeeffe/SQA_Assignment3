@@ -1,16 +1,27 @@
 # pages/base_page.py
+import time
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException, WebDriverException
+from urllib.parse import urljoin
 
 class BasePage:
-    def __init__(self, driver, base_url=None, wait=10):
+    DEFAULT_TIMEOUT = 10
+    def __init__(self, driver, base_url: str, timeout: int = 10):
         self.driver = driver
         self.base_url = base_url
-        self.wait = WebDriverWait(driver, wait)
+        self.wait = WebDriverWait(driver, timeout)
 
-    def visit(self, path=""):
-        url = self.base_url if not path else f"{self.base_url}{path}"
+    def visit(self, path: str = ""):
+        if path is None:
+            path = ""
+        if not isinstance(path, str):
+            # convert tuples/lists/dicts to string so driver.get doesn't receive non-string
+            path = str(path)
+        url = urljoin(self.base_url, path)
+        # debug guard
+        if not isinstance(url, str):
+            raise TypeError(f"Constructed url must be a string, got {type(url).__name__}")
         self.driver.get(url)
 
     def find(self, by, value, timeout=None):
@@ -23,6 +34,18 @@ class BasePage:
 
     def title(self):
         return self.driver.title
+    
+    def wait_for_page_ready(self, timeout: int = None):
+        to = timeout or self.DEFAULT_TIMEOUT
+        wait = WebDriverWait(self.driver, to)
+        try:
+            wait.until(lambda d: d.execute_script("return document.readyState") == "complete")
+        except Exception:
+            pass
+        # small additional pause to allow client-side rendering
+        time.sleep(0.2)
+
+
 
     def _dismiss_overlays(self, timeout=3):
         """

@@ -6,7 +6,6 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 
-BASE_URL = os.environ.get("EP_BASE_URL", "https://ecommerce-playground.lambdatest.io/index.php?route=common/home")
 DEFAULT_BROWSER = os.environ.get("EP_BROWSER", "chrome").lower()
 HEADLESS = os.environ.get("EP_HEADLESS", "1") not in ("0", "false", "False")
 
@@ -23,7 +22,7 @@ def _chrome_driver():
 
 @pytest.fixture(scope="session")
 def base_url():
-    return BASE_URL
+    return "https://ecommerce-playground.lambdatest.io/" 
 
 @pytest.fixture(params=["chrome"], scope="session")
 def browser_name(request):

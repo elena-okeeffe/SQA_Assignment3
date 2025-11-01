@@ -1,6 +1,6 @@
 # ecommerce-playground-tests
 
-Cross-platform Selenium + pytest test suite for the demo store.
+Selenium + pytest test suite for the demo store.
 
 Prereqs
 - Python 3.8+
