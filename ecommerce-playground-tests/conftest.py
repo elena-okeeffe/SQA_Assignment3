@@ -9,6 +9,10 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 DEFAULT_BROWSER = os.environ.get("EP_BROWSER", "chrome").lower()
 HEADLESS = os.environ.get("EP_HEADLESS", "1") not in ("0", "false", "False")
 
+
+def pytest_configure(config):
+    config.addinivalue_line("markers", "integration: marks tests as integration tests")
+    
 def _chrome_driver():
     opts = ChromeOptions()
     if HEADLESS:
