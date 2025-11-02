@@ -1,0 +1,182 @@
+import os, time, random, string
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait, Select
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import TimeoutException
+from webdriver_manager.chrome import ChromeDriverManager
+
+COUNTRY = os.getenv("COUNTRY", "Australia")
+REGION  = os.getenv("REGION",  "New South Wales")
+
+BASE         = "https://ecommerce-playground.lambdatest.io"
+REGISTER_URL = f"{BASE}/index.php?route=account/register"
+ADDR_ADD_URL = f"{BASE}/index.php?route=account/address/add"
+ADDR_LIST_URL= f"{BASE}/index.php?route=account/address"
+
+def unique_email():
+    return f"sumangala_{''.join(random.choices(string.ascii_lowercase+string.digits, k=7))}@example.com"
+
+def setup_browser():
+    opts = Options()
+    opts.add_argument("--headless=new")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+    d = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=opts)
+    d.set_window_size(1300, 900)
+    return d
+
+def wait_present(d, by, locator, timeout=12):
+    return WebDriverWait(d, timeout).until(EC.presence_of_element_located((by, locator)))
+
+def js_click(d, el):
+    d.execute_script("arguments[0].scrollIntoView({block:'center'}); arguments[0].click();", el)
+
+def js_select_non_disabled_by_text(d, select_css, wanted_text=None):
+    script = """
+    const sel = document.querySelector(arguments[0]);
+    if (!sel) return {ok:false, reason:'select-not-found'};
+    const want = (arguments[1] || '').toLowerCase();
+    let idx = -1, chosen = null;
+    for (let i=0;i<sel.options.length;i++){
+      const opt = sel.options[i];
+      if (opt.disabled || opt.value === '') continue;
+      const txt = opt.text.trim();
+      if (!want || txt.toLowerCase() === want || txt.toLowerCase().includes(want)){
+        idx = i; chosen = txt; break;
+      }
+    }
+    if (idx === -1){
+      for (let i=0;i<sel.options.length;i++){
+        const opt = sel.options[i];
+        if (!opt.disabled && opt.value !== '') { idx = i; chosen = opt.text.trim(); break; }
+      }
+    }
+    if (idx === -1) return {ok:false, reason:'no-valid-option'};
+    sel.selectedIndex = idx;
+    sel.dispatchEvent(new Event('change', {bubbles:true}));
+    return {ok:true, text: chosen};
+    """
+    result = d.execute_script(script, select_css, wanted_text or "")
+    if not result or not result.get("ok"):
+        raise RuntimeError(f"JS select failed: {result}")
+    return result["text"]
+
+def select_country_and_region(d, country_text, region_text):
+    # Country
+    wait_present(d, By.NAME, "country_id")
+    chosen_country = js_select_non_disabled_by_text(d, "select[name='country_id']", country_text)
+
+    # Wait for region list to populate
+    wait_present(d, By.NAME, "zone_id")
+    end = time.time() + 12
+    while time.time() < end:
+        sel = Select(d.find_element(By.NAME, "zone_id"))
+        valid = [o for o in sel.options if not o.get_attribute("disabled") and o.get_attribute("value").strip()]
+        if valid:
+            break
+        time.sleep(0.3)
+    if not valid:
+        raise TimeoutException("Region list did not populate")
+
+    # Region
+    chosen_region = js_select_non_disabled_by_text(d, "select[name='zone_id']", region_text)
+    return chosen_country, chosen_region
+
+def register_user(d, email, password):
+    print("Opening registration page…")
+    d.get(REGISTER_URL)
+    d.find_element(By.NAME, "firstname").send_keys("Sumangala")
+    d.find_element(By.NAME, "lastname").send_keys("Rao")
+    d.find_element(By.NAME, "email").send_keys(email)
+    d.find_element(By.NAME, "telephone").send_keys("0400000000")
+    d.find_element(By.NAME, "password").send_keys(password)
+    d.find_element(By.NAME, "confirm").send_keys(password)
+    
+
+    js_click(d, wait_present(d, By.CSS_SELECTOR, "label[for='input-agree']"))
+    js_click(d, WebDriverWait(d, 12).until(EC.element_to_be_clickable((By.XPATH, "//input[@value='Continue']"))))
+    WebDriverWait(d, 12).until(EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Your Account Has Been Created!"))
+    print("Registered and logged in.")
+
+def add_address(d, *, first="Sam", last="Rao", addr1="10 Market St", city="Sydney",
+                postcode="2000", country=COUNTRY, region=REGION, make_default=True):
+    d.get(ADDR_ADD_URL)
+    wait_present(d, By.NAME, "firstname")
+    d.find_element(By.NAME, "firstname").send_keys(first)
+    d.find_element(By.NAME, "lastname").send_keys(last)
+    d.find_element(By.NAME, "address_1").send_keys(addr1)
+    d.find_element(By.NAME, "city").send_keys(city)
+    d.find_element(By.NAME, "postcode").send_keys(postcode)
+
+    try:
+        select_country_and_region(d, country, region)
+    except Exception:
+        select_country_and_region(d, "Australia", "New South Wales")
+
+    # Default radio
+    val = "1" if make_default else "0"
+    js_click(d, d.find_element(By.CSS_SELECTOR, f"input[name='default'][value='{val}']"))
+
+    # Save
+    js_click(d, WebDriverWait(d, 12).until(EC.element_to_be_clickable((By.XPATH, "//input[@value='Continue']"))))
+    WebDriverWait(d, 12).until(EC.text_to_be_present_in_element((By.TAG_NAME, "body"), "Address Book"))
+    print(f"Address saved (default={make_default}).")
+
+def test_default_address_protection():
+    email = unique_email()
+    password = "Test@12345"
+    d = setup_browser()
+    try:
+        register_user(d, email, password)
+
+        # 1) Add a DEFAULT address
+        add_address(d, make_default=True)
+
+        # 2) Add a NON-DEFAULT address (to ensure at least one deletable entry exists)
+        add_address(d, first="Alex", last="Patel", addr1="25 George St",
+                    city="Melbourne", postcode="3000", make_default=False)
+
+        # 3) Verify on Address List
+        d.get(ADDR_LIST_URL)
+        rows = d.find_elements(By.XPATH, "//table//tr")
+        if not rows:
+            print("No address rows found.")
+            return
+
+        found_default = False
+        default_has_delete = False
+        non_default_has_delete = False
+
+        for r in rows:
+            txt = r.text.lower()
+            delete_links = r.find_elements(By.XPATH, ".//a[contains(@href,'address/delete') and contains(.,'Delete')]")
+            if "default" in txt:
+                found_default = True
+                if delete_links:
+                    default_has_delete = True
+            else:
+                if delete_links:
+                    non_default_has_delete = True
+
+        # Print outcomes
+        if not found_default:
+            print("Could not identify a 'Default' address row. Please review the page structure.")
+        else:
+            if default_has_delete:
+                print("!!!!!!!!!!Test failed - Bug found: Delete is possible for default address")
+            else:
+                print("!!!!!Test passed - Default address cannot be deleted !!!!!!!!!!!!!!!!")
+
+        if non_default_has_delete:
+            print("!!!!!!!! Test passed - Non-default address !!!!!!!!!!!!! ")
+        else:
+            print("!!!!!!!!!! No deletable non-default address detected — add at least one non-default entry.!!!!!!!!")
+
+    finally:
+        d.quit()
+
+if __name__ == "__main__":
+    test_default_address_protection()
